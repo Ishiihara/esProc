@@ -1,5 +1,7 @@
 # Snowflake Container Service Setup
 
+⚠️ Note: This service only works in AWS or Azure Snowflake accounts ⚠️
+
 ## Role Setup
 
 This section sets up a new role named `test_role` in Snowflake. Roles are used to manage permissions and control access to different resources.
@@ -76,28 +78,35 @@ This guide will walk you through installing the required tools, building and upl
 The project requires **JDK 1.8**. Please download it from [Oracle's website](https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html) and set the appropriate `JAVA_HOME` environment variable.
 
 To verify that JDK is installed correctly, run:
+
 ```bash
 java -version
 ```
+
 Make sure the output shows the correct version (Java 1.8).
 
 ### 2. Install Maven
 
 You also need to install **Maven**. On macOS, it can be easily installed via [Homebrew](https://brew.sh/):
+
 ```bash
 brew install maven
 ```
+
 To verify Maven installation, run:
+
 ```bash
 mvn -version
 ```
+
 Ensure that the version output matches your requirements.
 
 ### 3. Build
 
-You need to build the code using the following command. Note that the build may fail at the last step, however, all the necessary asset will be generated. 
+You need to build the code using the following command. Note that the build may fail at the last step, however, all the necessary asset will be generated.
+
 ```
-mvn clean package -Prelease 
+mvn clean package -Prelease
 ```
 
 ### 4. Upload the Docker Image
@@ -105,18 +114,35 @@ mvn clean package -Prelease
 We provide a script to **build** the project and **upload** the resulting Docker image to a repository managed by Snowflake. You can customize the repository location if needed.
 
 Before running the script, set your Snowflake account as an environment variable:
+
 ```bash
 export SNOWFLAKE_ACCOUNT=your-snowflake-account
 ```
+
+You can locate your Snowflake account by running the following command in your Snowflake workbook:
+
+```sql
+SHOW IMAGE REPOSITORIES
+```
+
+Then login to Snowflake registry by running the following command:
+
+```bash
+docker login $SNOWFLAKE_ACCOUNT.registry.snowflakecomputing.com -u user
+```
+
 Then run the build script:
+
 ```bash
 ./push_to_snowflake.sh
 ```
+
 This script will build the Docker image and upload it to the Snowflake-managed Docker repository.
 
 ### 5. Create the Compute Pool and SPL Service in Snowflake
 
 To create the SPL service in Snowflake, run the following SQL command in your Snowflake workbook. This command will create a service that provides endpoints to execute SPL files saved in the specified path.
+
 ```sql
 CREATE SERVICE spl_service
   IN COMPUTE POOL tutorial_compute_pool
@@ -145,6 +171,7 @@ CREATE SERVICE spl_service
 The service will provide endpoints to allow users to execute SPL files located in the main path, which is backed by the stage. As long as the SPL file is in the stage, it can be executed via REST APIs.
 
 To **check the status** of the service or **retrieve logs**, use the following SQL commands:
+
 ```sql
 SELECT SYSTEM$GET_SERVICE_STATUS('spl_service');
 SELECT SYSTEM$GET_SERVICE_LOGS('spl_service', '0', 'main');
@@ -153,14 +180,17 @@ SELECT SYSTEM$GET_SERVICE_LOGS('spl_service', '0', 'main');
 ### 6. Execute SPL Using REST API
 
 To execute SPL via REST API, first get the service endpoint:
+
 ```sql
 SHOW ENDPOINTS IN SERVICE spl_service;
 ```
 
 From the result, copy the `ingress_url` and paste it into your web browser (e.g., Chrome). You can then invoke the SPL using a REST API request like this:
+
 ```bash
 https://your-ingress-url.snowflakecomputing.app/file_test.splx()
 ```
+
 Replace `your-ingress-url` with the actual URL obtained from the `SHOW ENDPOINTS` command.
 
 This assumes that both the `file_test.splx` and any relevant data are in the `mainPath` backed by the stage.
@@ -168,11 +198,13 @@ This assumes that both the `file_test.splx` and any relevant data are in the `ma
 ### 7. Upload Data and SPL Files to Snowflake Stage
 
 To upload data or SPL files into the Snowflake stage, use **SnowSQL** (see [SnowSQL documentation](https://docs.snowflake.com/en/user-guide/snowsql)). For example, to upload the `employee.btx` file:
+
 ```sql
 PUT file:////path-to-esproc/mainPath/employee.btx @tutorial_stage
 AUTO_COMPRESS=FALSE
 OVERWRITE=TRUE;
 ```
+
 Change `path-to-esproc` to the actual path on your machine. This command will place the file into the `tutorial_stage`, making it accessible for SPL execution.
 
 ### Summary
